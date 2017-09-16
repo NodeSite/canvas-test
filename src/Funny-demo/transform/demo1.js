@@ -1,29 +1,34 @@
-! function() {
+var extend = 0; // 扩展三角形，处理缝隙问题
+var hasDot = false, // 显示点
+    hasRect = true, // 显示方格
+    hasPic = true, // 显示图片
+    count = 10; // 等分割数量
+
+function transformImage() {
     "use strict";
 
-    var hasDot = false, // 显示点
-        hasRect = false, // 显示方格
-        hasPic = true, // 显示图片
-        count = 10; // 等分割数量
-
-    var canvas = document.getElementById("cas");
+    var canvas = document.createElement("canvas");
     var ctx = canvas.getContext("2d");
 
-    var dots = [];
-    var dotscopy, idots;
+
+    canvas.width = 1000;
+    canvas.height = 1000;
+
+    var dots, dotscopy, idots;
 
     var img = new Image();
-    img.src = "./img/test.jpg";
+    img.src = "./img/shoes.png";
+
     img.onload = function() {
-        var img_w = img.width / 2;
-        var img_h = img.height / 2;
-        var left = (canvas.width - img_w) / 2;
-        var top = (canvas.height - img_h) / 2;
+        var img_w = img.width;
+        var img_h = img.height;
+        var left = (canvas.width - img_w);
+        var top = (canvas.height - img_h);
 
         img.width = img_w;
         img.height = img_h;
 
-        window.dots = dots = [
+        dots = [
             { x: left, y: top },
             { x: left + img_w, y: top },
             { x: left + img_w, y: top + img_h },
@@ -41,7 +46,6 @@
         //获得所有初始点坐标
         idots = rectsplit(count, dotscopy[0], dotscopy[1], dotscopy[2], dotscopy[3]);
 
-        dots = [{ "x": 416, "y": 19 }, { "x": 953, "y": 471 }, { "x": 922, "y": 114 }, { "x": 30, "y": 749 }];
         render();
     };
 
@@ -49,43 +53,52 @@
      * 鼠标拖动事件绑定
      * @param e
      */
-    window.onmousedown = function(e) {
-        if (!dots.length) return;
-
-        var area = getArea(e);
+    function bindDrag() {
+        var area;
         var dot, i;
-        //鼠标事件触发区域
-        var qy = 40;
+        var qy = 40; //鼠标事件触发区域
 
-        for (i = 0; i < dots.length; i++) {
-            dot = dots[i];
-            if (area.t >= (dot.y - qy) && area.t <= (dot.y + qy) && area.l >= (dot.x - qy) && area.l <= (dot.x + qy)) {
-                break;
-            } else {
-                dot = null;
+        var actions = {
+            mousedown: function(e) {
+                if (!dots.length) return;
+                area = getArea(e)
+                for (i = 0; i < dots.length; i++) {
+                    dot = dots[i];
+                    if (area.t >= (dot.y - qy) && area.t <= (dot.y + qy) && area.l >= (dot.x - qy) && area.l <= (dot.x + qy)) {
+                        break;
+                    } else {
+                        dot = null;
+                    }
+                }
+
+                if (!dot) return;
+
+                window.addEventListener('mousemove', actions.mousemove);
+                window.addEventListener('mouseup', actions.mouseup);
+            },
+
+            mousemove: function(e) {
+                var narea = getArea(e);
+                var nx = narea.l - area.l;
+                var ny = narea.t - area.t;
+
+                dot.x += nx;
+                dot.y += ny;
+
+                area = narea;
+
+                render();
+            },
+
+            mouseup: function() {
+                window.removeEventListener('mousemove', actions.mousemove);
+                window.removeEventListener('mouseup', actions.mouseup);
             }
         }
+        window.addEventListener('mousedown', actions.mousedown);
+    }
 
-        if (!dot) return;
-
-        window.onmousemove = function(e) {
-            var narea = getArea(e);
-            var nx = narea.l - area.l;
-            var ny = narea.t - area.t;
-
-            dot.x += nx;
-            dot.y += ny;
-
-            area = narea;
-
-            render();
-        };
-
-        window.onmouseup = function() {
-            window.onmousemove = null;
-            window.onmouseup = null;
-        }
-    };
+    bindDrag();
 
     /**
      * 获取鼠标点击/移过的位置
@@ -136,6 +149,7 @@
                 ctx.save();
             }
         });
+        ctx.restore();
     }
 
     /**
@@ -151,7 +165,6 @@
         ctx.save();
         //根据变换后的坐标创建剪切区域
         ctx.beginPath();
-        var extend = 2
         if (isUp) { // 上半部分三角形
             ctx.moveTo(_arg_1.x - extend, _arg_1.y - extend);
             ctx.lineTo(_arg_2.x + extend, _arg_2.y - extend);
@@ -227,4 +240,10 @@
 
         return ndots;
     }
-}();
+
+    return canvas;
+};
+
+var canvas = transformImage();
+
+document.body.appendChild(canvas);
