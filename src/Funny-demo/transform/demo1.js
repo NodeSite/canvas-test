@@ -1,23 +1,40 @@
-var extend = 0; // 扩展三角形，处理缝隙问题
-var hasDot = false, // 显示点
-    hasRect = true, // 显示方格
-    hasPic = true, // 显示图片
-    count = 10; // 等分割数量
-
-function transformImage() {
+function transformImage(options) {
     "use strict";
+
+    var opts = {
+        width: 1000,
+        height: 1000,
+        imageSrc: './img/1-1.png',
+        maskSrc: './img/shoes-mask-01.png',
+        points: null, // 默认位置
+        extend: 2, // 扩展三角形，处理缝隙问题
+        hasDrag: true, // 开启拖拽
+        hasDot: true, // 显示点
+        hasRect: false, // 显示方格
+        hasPic: true, // 显示图片
+        count: 10, // 等分割数量
+    };
+
+    Object.assign(opts, options);
 
     var canvas = document.createElement("canvas");
     var ctx = canvas.getContext("2d");
 
-
-    canvas.width = 1000;
-    canvas.height = 1000;
+    canvas.width = opts.width;
+    canvas.height = opts.height;
 
     var dots, dotscopy, idots;
 
+    if (!opts.imageSrc) {
+        return canvas;
+    }
+
+    // mask
+    var mask = new Image();
+
+    // image
     var img = new Image();
-    img.src = "./img/shoes.png";
+    img.src = opts.imageSrc;
 
     img.onload = function() {
         var img_w = img.width;
@@ -44,10 +61,23 @@ function transformImage() {
         ];
 
         //获得所有初始点坐标
-        idots = rectsplit(count, dotscopy[0], dotscopy[1], dotscopy[2], dotscopy[3]);
+        idots = rectsplit(opts.count, dotscopy[0], dotscopy[1], dotscopy[2], dotscopy[3]);
 
-        render();
+        if (opts.maskSrc) {
+
+            mask.onload = function() {
+                render(opts.points);
+            };
+            mask.src = opts.maskSrc;
+        } else {
+            render(opts.points);
+        }
     };
+
+    // 绑定拖拽功能
+    if (opts.hasDrag) {
+        bindDrag();
+    }
 
     /**
      * 鼠标拖动事件绑定
@@ -56,7 +86,7 @@ function transformImage() {
     function bindDrag() {
         var area;
         var dot, i;
-        var qy = 40; //鼠标事件触发区域
+        var qy = 80; //鼠标事件触发区域
 
         var actions = {
             mousedown: function(e) {
@@ -98,8 +128,6 @@ function transformImage() {
         window.addEventListener('mousedown', actions.mousedown);
     }
 
-    bindDrag();
-
     /**
      * 获取鼠标点击/移过的位置
      * @param e
@@ -117,7 +145,10 @@ function transformImage() {
      * 画布渲染
      */
     function render() {
+        var count = opts.count;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.drawImage(mask, 0, 0);
 
         var ndots = rectsplit(count, dots[0], dots[1], dots[2], dots[3]);
 
@@ -134,6 +165,8 @@ function transformImage() {
             var idot3 = idots[i + count + 2];
             var idot4 = idots[i + count + 1];
 
+            // ctx.globalAlpha = 0.8;
+            ctx.globalCompositeOperation = 'source-atop';
             if (dot2 && dot3 && i % (count + 1) < count) {
                 //绘制三角形的下半部分
                 renderImage(idot3, dot3, idot2, dot2, idot4, dot4);
@@ -141,8 +174,11 @@ function transformImage() {
                 //绘制三角形的上半部分
                 renderImage(idot1, dot1, idot2, dot2, idot4, dot4, true);
             }
+            ctx.globalCompositeOperation = 'source-over';
+            // ctx.globalAlpha = 1;
 
-            if (hasDot) {
+            // 显示圆点
+            if (opts.hasDot) {
                 ctx.save();
                 ctx.fillStyle = "red";
                 ctx.fillRect(d.x - 1, d.y - 1, 2, 2);
@@ -162,6 +198,7 @@ function transformImage() {
      * @param _arg_3
      */
     function renderImage(arg_1, _arg_1, arg_2, _arg_2, arg_3, _arg_3, isUp) {
+        var extend = opts.extend;
         ctx.save();
         //根据变换后的坐标创建剪切区域
         ctx.beginPath();
@@ -175,14 +212,16 @@ function transformImage() {
             ctx.lineTo(_arg_3.x - extend, _arg_3.y - extend);
         }
         ctx.closePath();
-        if (hasRect) {
+
+        // 显示边线
+        if (opts.hasRect) {
             ctx.lineWidth = 2;
             ctx.strokeStyle = "red";
             ctx.stroke();
         }
         ctx.clip();
 
-        if (hasPic) {
+        if (opts.hasPic) {
             //传入变换前后的点坐标，计算变换矩阵
             var result = matrix.getMatrix.apply(this, arguments);
 
@@ -241,9 +280,25 @@ function transformImage() {
         return ndots;
     }
 
-    return canvas;
+    return {
+        canvas: canvas,
+        options: opts,
+        reRender: render,
+    };
 };
 
-var canvas = transformImage();
 
-document.body.appendChild(canvas);
+
+var transform = transformImage({
+    imageSrc: './img/1-1.png',
+    maskSrc: './img/shoes-mask-01.png',
+    // points: null, // 默认位置
+    // extend: 2, // 扩展三角形，处理缝隙问题
+    // hasDrag: true, // 开启拖拽
+    // hasDot: true, // 显示点
+    // hasRect: true, // 显示方格
+    // hasPic: true, // 显示图片
+    // count: 10, // 等分割数量
+});
+
+document.body.appendChild(transform.canvas);
